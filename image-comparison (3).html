@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Comparison Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            padding: 12px 20px;
+            background: #2a2a2a;
+            border-bottom: 2px solid #3a3a3a;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            margin-bottom: 5px;
+            color: #fff;
+        }
+
+        .instructions {
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            gap: 12px;
+            padding: 12px;
+            overflow: hidden;
+        }
+
+        .panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #2a2a2a;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid transparent;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .panel.active {
+            border-color: #4a9eff;
+            box-shadow: 0 0 15px rgba(74, 158, 255, 0.3);
+        }
+
+        .panel-header {
+            padding: 10px;
+            background: #333;
+            border-bottom: 2px solid #3a3a3a;
+        }
+
+        .panel-title {
+            width: 100%;
+            background: #2a2a2a;
+            border: 2px solid #444;
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .panel-title:focus {
+            border-color: #4a9eff;
+        }
+
+        .panel-title::placeholder {
+            color: #666;
+        }
+
+        .image-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .placeholder {
+            text-align: center;
+            color: #666;
+            font-size: 16px;
+            user-select: none;
+        }
+
+        .placeholder-icon {
+            font-size: 36px;
+            margin-bottom: 8px;
+            opacity: 0.5;
+        }
+
+        .image-area img {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .image-area img.loaded {
+            display: block;
+        }
+
+        .clear-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(255, 59, 48, 0.9);
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            display: none;
+            z-index: 10;
+            transition: background 0.2s ease;
+        }
+
+        .clear-btn:hover {
+            background: rgba(255, 59, 48, 1);
+        }
+
+        .image-area.has-image .clear-btn {
+            display: block;
+        }
+
+        .status-indicator {
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(74, 158, 255, 0.9);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 11px;
+            font-weight: 600;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none;
+        }
+
+        .panel.active .status-indicator {
+            opacity: 1;
+        }
+
+        .fullscreen-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #4a9eff;
+            border: none;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            z-index: 100;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(74, 158, 255, 0.4);
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        .fullscreen-btn.ready {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .fullscreen-btn.ready:hover {
+            background: #3a8eef;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(74, 158, 255, 0.5);
+        }
+
+        .fullscreen-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            z-index: 1000;
+            display: none;
+            flex-direction: row;
+        }
+
+        .fullscreen-overlay.active {
+            display: flex;
+        }
+
+        .fullscreen-panel {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 20px;
+        }
+
+        .fullscreen-separator {
+            width: 2px;
+            background: #333;
+            height: 100%;
+        }
+
+        .fullscreen-image-container {
+            position: relative;
+            max-width: 100%;
+            max-height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .fullscreen-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .fullscreen-title {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            white-space: nowrap;
+            max-width: 90%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .fullscreen-exit {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 59, 48, 0.9);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            z-index: 1001;
+            transition: background 0.2s ease;
+        }
+
+        .fullscreen-exit:hover {
+            background: rgba(255, 59, 48, 1);
+        }
+
+        .fullscreen-hint {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.1);
+            color: #aaa;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            z-index: 1001;
+            backdrop-filter: blur(10px);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .header h1 {
+                font-size: 16px;
+            }
+            
+            .instructions {
+                font-size: 11px;
+            }
+            
+            .placeholder {
+                font-size: 14px;
+            }
+            
+            .placeholder-icon {
+                font-size: 28px;
+            }
+
+            .fullscreen-btn {
+                bottom: 15px;
+                right: 15px;
+                padding: 10px 16px;
+                font-size: 13px;
+            }
+
+            .fullscreen-title {
+                font-size: 16px;
+                padding: 8px 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📸 Image Comparison Tool</h1>
+        <div class="instructions">
+            Click a panel to select it, then paste an image (Ctrl/Cmd+V) • Edit titles • Press F for fullscreen • Screenshot to save
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="panel active" id="panel1">
+            <div class="panel-header">
+                <input type="text" class="panel-title" placeholder="Enter title for first image..." value="Image 1">
+            </div>
+            <div class="image-area" id="imageArea1">
+                <div class="placeholder">
+                    <div class="placeholder-icon">🖼️</div>
+                    <div>Click here & paste an image</div>
+                    <div style="font-size: 14px; margin-top: 5px; opacity: 0.7;">(Ctrl/Cmd+V)</div>
+                </div>
+                <img id="img1" alt="Pasted image 1">
+                <button class="clear-btn" onclick="clearImage(1)">✕ Clear</button>
+                <div class="status-indicator">📋 Ready to paste</div>
+            </div>
+        </div>
+
+        <div class="panel" id="panel2">
+            <div class="panel-header">
+                <input type="text" class="panel-title" placeholder="Enter title for second image..." value="Image 2">
+            </div>
+            <div class="image-area" id="imageArea2">
+                <div class="placeholder">
+                    <div class="placeholder-icon">🖼️</div>
+                    <div>Click here & paste an image</div>
+                    <div style="font-size: 14px; margin-top: 5px; opacity: 0.7;">(Ctrl/Cmd+V)</div>
+                </div>
+                <img id="img2" alt="Pasted image 2">
+                <button class="clear-btn" onclick="clearImage(2)">✕ Clear</button>
+                <div class="status-indicator">📋 Ready to paste</div>
+            </div>
+        </div>
+    </div>
+
+    <button class="fullscreen-btn" onclick="toggleFullscreen()">
+        🖥️ Fullscreen (F)
+    </button>
+
+    <div class="fullscreen-overlay" id="fullscreenOverlay">
+        <div class="fullscreen-panel">
+            <div class="fullscreen-image-container">
+                <div class="fullscreen-title" id="fullscreenTitle1">Image 1</div>
+                <img class="fullscreen-image" id="fullscreenImg1" alt="Image 1">
+            </div>
+        </div>
+        <div class="fullscreen-separator"></div>
+        <div class="fullscreen-panel">
+            <div class="fullscreen-image-container">
+                <div class="fullscreen-title" id="fullscreenTitle2">Image 2</div>
+                <img class="fullscreen-image" id="fullscreenImg2" alt="Image 2">
+            </div>
+        </div>
+        <button class="fullscreen-exit" onclick="exitFullscreen()">✕ Exit (ESC)</button>
+        <div class="fullscreen-hint">Press ESC or F to exit • Perfect for screenshots</div>
+    </div>
+
+    <script>
+        let activePanel = 1;
+
+        // Check if both images are loaded and update fullscreen button
+        function updateFullscreenButton() {
+            const img1 = document.getElementById('img1');
+            const img2 = document.getElementById('img2');
+            const fullscreenBtn = document.querySelector('.fullscreen-btn');
+            
+            if (img1.classList.contains('loaded') && img2.classList.contains('loaded')) {
+                fullscreenBtn.classList.add('ready');
+            } else {
+                fullscreenBtn.classList.remove('ready');
+            }
+        }
+
+        // Panel selection
+        document.getElementById('panel1').addEventListener('click', (e) => {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
+                setActivePanel(1);
+            }
+        });
+
+        document.getElementById('panel2').addEventListener('click', (e) => {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
+                setActivePanel(2);
+            }
+        });
+
+        function setActivePanel(panelNum) {
+            activePanel = panelNum;
+            document.getElementById('panel1').classList.toggle('active', panelNum === 1);
+            document.getElementById('panel2').classList.toggle('active', panelNum === 2);
+        }
+
+        // Paste handler
+        document.addEventListener('paste', (e) => {
+            const items = e.clipboardData.items;
+            
+            for (let item of items) {
+                if (item.type.indexOf('image') !== -1) {
+                    e.preventDefault();
+                    const blob = item.getAsFile();
+                    const reader = new FileReader();
+                    
+                    reader.onload = (event) => {
+                        const img = document.getElementById(`img${activePanel}`);
+                        const imageArea = document.getElementById(`imageArea${activePanel}`);
+                        
+                        img.src = event.target.result;
+                        img.classList.add('loaded');
+                        imageArea.classList.add('has-image');
+                        
+                        // Hide placeholder
+                        const placeholder = imageArea.querySelector('.placeholder');
+                        if (placeholder) {
+                            placeholder.style.display = 'none';
+                        }
+                        
+                        // Update fullscreen button state
+                        updateFullscreenButton();
+                    };
+                    
+                    reader.readAsDataURL(blob);
+                    break;
+                }
+            }
+        });
+
+        // Clear image function
+        function clearImage(panelNum) {
+            const img = document.getElementById(`img${panelNum}`);
+            const imageArea = document.getElementById(`imageArea${panelNum}`);
+            const placeholder = imageArea.querySelector('.placeholder');
+            
+            img.src = '';
+            img.classList.remove('loaded');
+            imageArea.classList.remove('has-image');
+            
+            if (placeholder) {
+                placeholder.style.display = 'block';
+            }
+            
+            // Update fullscreen button state
+            updateFullscreenButton();
+        }
+
+        // Prevent title inputs from triggering panel selection
+        document.querySelectorAll('.panel-title').forEach(input => {
+            input.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+        });
+
+        // Focus first title on load
+        window.addEventListener('load', () => {
+            document.querySelector('.panel-title').focus();
+            document.querySelector('.panel-title').select();
+        });
+
+        // Fullscreen functionality
+        function toggleFullscreen() {
+            const overlay = document.getElementById('fullscreenOverlay');
+            const img1 = document.getElementById('img1');
+            const img2 = document.getElementById('img2');
+            
+            // Check if both images are loaded
+            if (!img1.classList.contains('loaded') || !img2.classList.contains('loaded')) {
+                return;
+            }
+            
+            // Sync titles and images
+            const title1 = document.querySelectorAll('.panel-title')[0].value || 'Image 1';
+            const title2 = document.querySelectorAll('.panel-title')[1].value || 'Image 2';
+            
+            document.getElementById('fullscreenTitle1').textContent = title1;
+            document.getElementById('fullscreenTitle2').textContent = title2;
+            document.getElementById('fullscreenImg1').src = img1.src;
+            document.getElementById('fullscreenImg2').src = img2.src;
+            
+            overlay.classList.add('active');
+        }
+
+        function exitFullscreen() {
+            const overlay = document.getElementById('fullscreenOverlay');
+            overlay.classList.remove('active');
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // F key to toggle fullscreen
+            if (e.key === 'f' || e.key === 'F') {
+                const overlay = document.getElementById('fullscreenOverlay');
+                if (overlay.classList.contains('active')) {
+                    exitFullscreen();
+                } else {
+                    // Don't trigger if typing in an input field
+                    if (document.activeElement.tagName !== 'INPUT') {
+                        toggleFullscreen();
+                    }
+                }
+            }
+            
+            // ESC key to exit fullscreen
+            if (e.key === 'Escape') {
+                exitFullscreen();
+            }
+        });
+    </script>
+</body>
+</html>
